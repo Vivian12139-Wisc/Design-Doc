@@ -1,0 +1,564 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>DAR Backend - Zip and Upload Log</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body {
+    height: 100%;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+                 "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+    font-size: 14px;
+    color: #1f2937;
+    background: #f5f7fa;
+  }
+  .app { display: flex; height: 100vh; }
+
+  /* ---------- Sidebar ---------- */
+  .sidebar {
+    width: 230px;
+    background: #1f2a3a;
+    color: #cbd5e1;
+    display: flex;
+    flex-direction: column;
+    flex-shrink: 0;
+  }
+  .logo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 18px 20px;
+    color: #fff;
+    font-size: 15px;
+    font-weight: 500;
+    border-bottom: 1px solid #2a3548;
+  }
+  .logo-icon {
+    width: 28px; height: 28px;
+    background: linear-gradient(135deg, #60a5fa, #3b82f6);
+    border-radius: 6px;
+    display: inline-block;
+    position: relative;
+  }
+  .logo-icon::after{
+    content:"";
+    position:absolute; inset:6px;
+    border:2px solid #fff; border-radius:3px;
+    border-bottom:none; border-right:none;
+  }
+  .menu { flex: 1; padding: 8px 0; overflow-y: auto; }
+  .menu-item,
+  .menu-sub-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 11px 20px;
+    cursor: pointer;
+    font-size: 14px;
+    color: #cbd5e1;
+    user-select: none;
+  }
+  .menu-item:hover,
+  .menu-sub-item:hover { color: #fff; background: rgba(255,255,255,0.04); }
+  .menu-item .arrow { margin-left: auto; font-size: 10px; opacity: 0.6; }
+  .menu-item.expanded { color: #fff; }
+  .menu-sub {
+    background: #17202e;
+  }
+  .menu-sub-item { padding-left: 52px; font-size: 13px; }
+  .menu-sub-item.active {
+    background: #3b82f6;
+    color: #fff;
+  }
+  .icon {
+    width: 16px; height: 16px; display:inline-block; flex-shrink:0;
+    background-repeat:no-repeat; background-position:center; background-size:contain;
+    opacity: 0.85;
+  }
+  .i-app   { background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%23cbd5e1' stroke-width='1.4'><rect x='2' y='2.5' width='12' height='11' rx='1.5'/><path d='M2 6h12'/></svg>"); }
+  .i-data  { background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%23cbd5e1' stroke-width='1.4'><ellipse cx='8' cy='3.5' rx='5' ry='1.5'/><path d='M3 3.5v9c0 .83 2.24 1.5 5 1.5s5-.67 5-1.5v-9'/><path d='M3 8c0 .83 2.24 1.5 5 1.5s5-.67 5-1.5'/></svg>"); }
+  .i-cfg   { background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%23cbd5e1' stroke-width='1.4'><circle cx='8' cy='8' r='2.2'/><path d='M8 1.5v2M8 12.5v2M1.5 8h2M12.5 8h2M3.5 3.5l1.4 1.4M11.1 11.1l1.4 1.4M3.5 12.5l1.4-1.4M11.1 4.9l1.4-1.4'/></svg>"); }
+  .i-rep   { background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%23cbd5e1' stroke-width='1.4'><path d='M2 13V6M6 13V3M10 13V8M14 13V5'/></svg>"); }
+  .i-acc   { background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%23cbd5e1' stroke-width='1.4'><circle cx='8' cy='5.5' r='2.5'/><path d='M3 14c0-2.76 2.24-5 5-5s5 2.24 5 5'/></svg>"); }
+  .i-log   { background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%23cbd5e1' stroke-width='1.4'><circle cx='8' cy='8' r='6'/><path d='M8 4.5V8l2.5 1.5'/></svg>"); }
+
+  /* ---------- Main ---------- */
+  .main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+  .topbar {
+    height: 56px;
+    background: #fff;
+    border-bottom: 1px solid #e5e7eb;
+    display: flex;
+    align-items: center;
+    padding: 0 24px;
+    gap: 14px;
+  }
+  .collapse-btn {
+    width: 28px; height: 28px;
+    display:flex; align-items:center; justify-content:center;
+    color: #6b7280; cursor:pointer; border-radius:4px;
+  }
+  .collapse-btn:hover { background: #f3f4f6; }
+  .breadcrumb {
+    display:flex; align-items:center; gap:8px;
+    font-size: 15px;
+  }
+  .breadcrumb .bc-icon{
+    width:16px; height:16px;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%231f2937' stroke-width='1.5'><path d='M2 13V6M6 13V3M10 13V8M14 13V5'/></svg>");
+    background-repeat:no-repeat;
+  }
+  .breadcrumb .sep { color: #9ca3af; }
+  .breadcrumb .crumb { color: #1f2937; font-weight: 500; }
+  .breadcrumb .crumb.muted { color: #6b7280; font-weight: 400; }
+  .topbar .spacer { flex:1; }
+  .top-right { display:flex; align-items:center; gap:14px; color:#6b7280; }
+  .lang-btn { cursor:pointer; font-size:18px; }
+  .user { display:flex; align-items:center; gap:8px; }
+  .avatar {
+    width:28px;height:28px;border-radius:50%;
+    background:linear-gradient(135deg,#60a5fa,#3b82f6);
+    color:#fff;font-size:12px;
+    display:flex;align-items:center;justify-content:center;
+  }
+
+  .content {
+    flex: 1;
+    overflow-y: auto;
+    padding: 20px;
+  }
+
+  /* ---------- Search Card ---------- */
+  .card {
+    background: #fff;
+    border-radius: 4px;
+    padding: 24px 24px 18px;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.03);
+  }
+  .form-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 18px 24px;
+  }
+  .field label {
+    display:block;
+    font-size: 14px;
+    color: #1f2937;
+    margin-bottom: 6px;
+  }
+  .field label .req { color: #ef4444; margin-right: 2px; }
+  .input, .select {
+    width: 100%;
+    height: 34px;
+    border: 1px solid #d1d5db;
+    border-radius: 4px;
+    padding: 0 11px;
+    font-size: 14px;
+    color: #1f2937;
+    background: #fff;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  .input::placeholder { color: #c0c4cc; }
+  .input:focus, .select:focus { border-color: #3b82f6; }
+  .select {
+    appearance: none;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12' fill='none' stroke='%239ca3af' stroke-width='1.4'><path d='M3 4.5l3 3 3-3'/></svg>");
+    background-repeat: no-repeat;
+    background-position: right 10px center;
+    padding-right: 28px;
+    color: #c0c4cc;
+  }
+  .input.with-icon {
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%239ca3af' stroke-width='1.3'><rect x='2.5' y='3.5' width='11' height='10' rx='1'/><path d='M2.5 6.5h11M5.5 2v3M10.5 2v3'/></svg>");
+    background-repeat: no-repeat;
+    background-position: 10px center;
+    background-size: 14px;
+    padding-left: 32px;
+    color: #c0c4cc;
+  }
+
+  .form-row-2 {
+    margin-top: 18px;
+    display: flex;
+    align-items: flex-end;
+    gap: 24px;
+  }
+  .log-type-field { flex: 1; }
+  .checkbox-row {
+    display: flex;
+    align-items: center;
+    gap: 28px;
+    height: 34px;
+  }
+  .checkbox {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    font-size: 14px;
+    color: #1f2937;
+  }
+  .checkbox input { display:none; }
+  .checkbox .box {
+    width: 16px; height: 16px;
+    border: 1px solid #d1d5db;
+    border-radius: 2px;
+    background: #fff;
+    position: relative;
+  }
+  .checkbox input:checked + .box {
+    background: #3b82f6;
+    border-color: #3b82f6;
+  }
+  .checkbox input:checked + .box::after {
+    content:"";
+    position:absolute; left:4px; top:1px;
+    width:5px; height:9px;
+    border:solid #fff; border-width:0 2px 2px 0;
+    transform: rotate(45deg);
+  }
+
+  .actions { display: flex; gap: 10px; }
+  .btn {
+    height: 34px;
+    padding: 0 18px;
+    border-radius: 4px;
+    font-size: 14px;
+    cursor: pointer;
+    border: 1px solid transparent;
+    transition: all 0.15s;
+  }
+  .btn-primary {
+    background: #3b82f6;
+    color: #fff;
+    border-color: #3b82f6;
+  }
+  .btn-primary:hover { background: #2563eb; border-color:#2563eb; }
+  .btn-outline {
+    background: #eff6ff;
+    color: #3b82f6;
+    border-color: #bfdbfe;
+  }
+  .btn-outline:hover { background:#dbeafe; }
+
+  /* ---------- Result table ---------- */
+  .result-card {
+    margin-top: 16px;
+    background: #fff;
+    border-radius: 4px;
+    padding: 0;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.03);
+    overflow: hidden;
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+  }
+  thead th {
+    text-align: left;
+    background: #fafafa;
+    color: #1f2937;
+    font-weight: 600;
+    padding: 12px 14px;
+    border-bottom: 1px solid #e5e7eb;
+    white-space: nowrap;
+  }
+  tbody td {
+    padding: 12px 14px;
+    border-bottom: 1px solid #f1f3f5;
+    color: #374151;
+    vertical-align: top;
+  }
+  tbody tr:hover { background: #f9fafb; }
+  .tag {
+    display: inline-block;
+    padding: 1px 8px;
+    border-radius: 3px;
+    font-size: 12px;
+    font-weight: 500;
+    line-height: 18px;
+  }
+  .tag-info {
+    background: #e6f4ff;
+    color: #1677ff;
+    border: 1px solid #91caff;
+  }
+  .tag-error {
+    background: #fff1f0;
+    color: #cf1322;
+    border: 1px solid #ffa39e;
+  }
+  .mono {
+    font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+    font-size: 12px;
+    color: #4b5563;
+  }
+  .uuid-cell {
+    max-width: 230px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .msg-cell {
+    max-width: 540px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  /* ---------- Pagination & footer ---------- */
+  .table-footer {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 14px 16px;
+    background: #fff;
+    border-top: 1px solid #f1f3f5;
+  }
+  .page-size-select {
+    width: 100px;
+    height: 30px;
+    border: 1px solid #d1d5db;
+    border-radius: 4px;
+    padding: 0 10px;
+    background: #fff;
+    appearance: none;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12' fill='none' stroke='%239ca3af' stroke-width='1.4'><path d='M3 4.5l3 3 3-3'/></svg>");
+    background-repeat: no-repeat;
+    background-position: right 8px center;
+    font-size: 13px;
+  }
+  .pager { display: flex; align-items: center; gap: 6px; }
+  .pager .p-btn {
+    min-width: 28px; height: 28px;
+    border:1px solid #e5e7eb; background:#fff; border-radius:4px;
+    display:inline-flex;align-items:center;justify-content:center;
+    cursor:pointer; color:#6b7280; font-size:13px; padding: 0 6px;
+  }
+  .pager .p-btn.active {
+    border-color: #3b82f6;
+    color: #3b82f6;
+  }
+  .pager .p-btn:hover { color: #3b82f6; }
+  .goto { display:flex; align-items:center; gap:8px; color:#4b5563; font-size:13px; }
+  .goto input {
+    width: 46px; height: 28px;
+    border:1px solid #d1d5db; border-radius:4px;
+    text-align:center; font-size:13px;
+  }
+  .total { margin-left:auto; color:#4b5563; font-size:13px; }
+
+  .bottom-actions {
+    margin-top: 16px;
+  }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- ==================== SIDEBAR ==================== -->
+  <aside class="sidebar">
+    <div class="logo">
+      <span class="logo-icon"></span>
+      <span>DAR Backend</span>
+    </div>
+    <nav class="menu">
+      <div class="menu-item"><span class="icon i-app"></span>Applications</div>
+      <div class="menu-item"><span class="icon i-data"></span>Data <span class="arrow">▾</span></div>
+      <div class="menu-item"><span class="icon i-cfg"></span>Config <span class="arrow">▾</span></div>
+
+      <div class="menu-item expanded"><span class="icon i-rep"></span>Reports <span class="arrow">▴</span></div>
+      <div class="menu-sub">
+        <div class="menu-sub-item">Statistical Reports</div>
+        <div class="menu-sub-item">Interface Log Report</div>
+        <div class="menu-sub-item">Report Generation Log</div>
+        <div class="menu-sub-item active">Zip and Upload Log</div>
+      </div>
+
+      <div class="menu-item"><span class="icon i-acc"></span>Accounts</div>
+      <div class="menu-item"><span class="icon i-log"></span>Log</div>
+    </nav>
+  </aside>
+
+  <!-- ==================== MAIN ==================== -->
+  <main class="main">
+    <!-- Top bar -->
+    <div class="topbar">
+      <div class="collapse-btn">
+        <svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+          <path d="M2 4h12M2 8h8M2 12h12"/>
+        </svg>
+      </div>
+      <div class="breadcrumb">
+        <span class="bc-icon"></span>
+        <span class="crumb">Reports</span>
+        <span class="sep">/</span>
+        <span class="crumb muted">Zip and Upload Log</span>
+      </div>
+      <div class="spacer"></div>
+      <div class="top-right">
+        <span class="lang-btn">文A</span>
+        <div class="user"><div class="avatar">R</div><span>root</span></div>
+      </div>
+    </div>
+
+    <!-- Content -->
+    <div class="content">
+
+      <!-- Search card -->
+      <div class="card">
+        <div class="form-grid">
+          <div class="field">
+            <label><span class="req">*</span>Exam Type</label>
+            <select class="select"><option>Please select</option></select>
+          </div>
+          <div class="field">
+            <label><span class="req">*</span>Exam Period</label>
+            <select class="select"><option>Please select</option></select>
+          </div>
+          <div class="field">
+            <label>Candidate Number</label>
+            <input class="input" placeholder="Please input" />
+          </div>
+
+          <div class="field">
+            <label>Case No.</label>
+            <input class="input" placeholder="Please input" />
+          </div>
+          <div class="field">
+            <label>Batch Number</label>
+            <input class="input" placeholder="Please input" />
+          </div>
+          <div class="field"></div>
+
+          <div class="field">
+            <label>Log Date Start</label>
+            <input class="input with-icon" placeholder="Please select" />
+          </div>
+          <div class="field">
+            <label>Log Date End</label>
+            <input class="input with-icon" placeholder="Please select" />
+          </div>
+          <div class="field"></div>
+        </div>
+
+        <div class="form-row-2">
+          <div class="log-type-field">
+            <label style="display:block;margin-bottom:6px;">Log Type</label>
+            <div class="checkbox-row">
+              <label class="checkbox"><input type="checkbox"><span class="box"></span>All</label>
+              <label class="checkbox"><input type="checkbox"><span class="box"></span>ERROR</label>
+              <label class="checkbox"><input type="checkbox" checked><span class="box"></span>INFO</label>
+            </div>
+          </div>
+          <div class="actions">
+            <button class="btn btn-primary">Search</button>
+            <button class="btn btn-outline">Sort</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Results -->
+      <div class="result-card">
+        <table>
+          <thead>
+            <tr>
+              <th style="width:170px">Timestamp</th>
+              <th style="width:90px">Log Type</th>
+              <th style="width:140px">Case No.</th>
+              <th>Message</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="mono">2026-04-17 15:36:28</td>
+              <td><span class="tag tag-info">INFO</span></td>
+              <td class="mono">DSE2530499</td>
+              <td class="msg-cell">Zipped file dar/reports/zip/20260417/68e7a1d9-3ae8-4b8a-9467-c78af713a3e6.zip</td>
+            </tr>
+            <tr>
+              <td class="mono">2026-04-17 15:36:25</td>
+              <td><span class="tag tag-info">INFO</span></td>
+              <td class="mono">DSE2530499</td>
+              <td class="msg-cell">Files (3) zipped successfully into 2025_HKDSE_759603049_DSE2530499.zip</td>
+            </tr>
+            <tr>
+              <td class="mono">2026-04-17 15:36:20</td>
+              <td><span class="tag tag-info">INFO</span></td>
+              <td class="mono">DSE2530499</td>
+              <td class="msg-cell">Start zip and upload task, oss_files=3</td>
+            </tr>
+            <tr>
+              <td class="mono">2026-04-17 15:36:20</td>
+              <td><span class="tag tag-info">INFO</span></td>
+              <td class="mono">DSE2530499</td>
+              <td class="msg-cell">Enqueued zip_and_upload_task, object_name=dar/reports/zip/20260417/68e7a1d9-…</td>
+            </tr>
+            <tr>
+              <td class="mono">2026-04-17 15:36:20</td>
+              <td><span class="tag tag-info">INFO</span></td>
+              <td class="mono">DSE2530499</td>
+              <td class="msg-cell">ZipUpload status is updated from PENDING to READY_FOR_ZIP</td>
+            </tr>
+            <tr>
+              <td class="mono">2026-04-17 11:17:13</td>
+              <td><span class="tag tag-error">ERROR</span></td>
+              <td class="mono">DSE2530499</td>
+              <td class="msg-cell">Skip DSE2530499, some subject reports not generated</td>
+            </tr>
+            <tr>
+              <td class="mono">2026-04-17 11:17:04</td>
+              <td><span class="tag tag-error">ERROR</span></td>
+              <td class="mono">DSE2530499</td>
+              <td class="msg-cell">Skip DSE2530499, some subject reports not generated</td>
+            </tr>
+            <tr>
+              <td class="mono">2026-04-17 11:15:44</td>
+              <td><span class="tag tag-info">INFO</span></td>
+              <td class="mono">DSE2520609</td>
+              <td class="msg-cell">Zipped file dar/reports/zip/20260417/ce280789-e883-4924-bcd0-d6a84f7ae331.zip</td>
+            </tr>
+            <tr>
+              <td class="mono">2026-04-17 11:15:41</td>
+              <td><span class="tag tag-info">INFO</span></td>
+              <td class="mono">DSE2520609</td>
+              <td class="msg-cell">Files (2) zipped successfully into 2025_HKDSE_750000206_DSE2520609.zip</td>
+            </tr>
+            <tr>
+              <td class="mono">2026-04-17 11:15:36</td>
+              <td><span class="tag tag-info">INFO</span></td>
+              <td class="mono">DSE2520609</td>
+              <td class="msg-cell">Start zip and upload task, oss_files=2</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <!-- Pagination -->
+        <div class="table-footer">
+          <select class="page-size-select"><option>10 / page</option></select>
+          <div class="pager">
+            <span class="p-btn">‹</span>
+            <span class="p-btn active">1</span>
+            <span class="p-btn">2</span>
+            <span class="p-btn">3</span>
+            <span class="p-btn">4</span>
+            <span class="p-btn">›</span>
+          </div>
+          <div class="goto">Go to <input value="1" /></div>
+          <div class="total">Total 38</div>
+        </div>
+      </div>
+
+      <!-- Download -->
+      <div class="bottom-actions">
+        <button class="btn btn-primary">Download Log</button>
+      </div>
+
+    </div>
+  </main>
+</div>
+</body>
+</html>

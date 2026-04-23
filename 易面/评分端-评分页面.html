@@ -1,0 +1,2050 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>ysmsap1 - 面试评分系统</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    font-family: "PingFang SC", "Microsoft YaHei", "Helvetica Neue", Helvetica, Arial, sans-serif;
+    background:#f5f7fa;
+    color:#303133;
+    font-size:14px;
+    min-height:100vh;
+  }
+
+  /* 顶部蓝色导航栏 */
+  .top-bar {
+    height:52px;
+    background:linear-gradient(90deg,#3a8ee6 0%,#4ba0ff 100%);
+    color:#fff;
+    display:flex;
+    align-items:center;
+    padding:0 24px;
+    position:sticky;
+    top:0;
+    z-index:100;
+    box-shadow:0 2px 8px rgba(58,142,230,.15);
+  }
+  .top-bar .back { font-size:20px; cursor:pointer; opacity:.9; }
+  .top-bar .back:hover { opacity:1; }
+  .top-bar .title {
+    flex:1; text-align:center; font-size:16px; font-weight:500; letter-spacing:1px;
+  }
+  .top-bar .tools { display:flex; gap:24px; font-size:13px; }
+  .top-bar .tools .item { display:flex; align-items:center; gap:4px; cursor:pointer; opacity:.95; }
+  .top-bar .tools .item:hover { opacity:1; }
+  .top-bar .tools .caret { font-size:10px; }
+
+  /* 内容容器 */
+  .container {
+    max-width:1400px;
+    margin:0 auto;
+    padding:16px 24px 40px;
+  }
+
+  /* 考生标题条 */
+  .student-bar {
+    background:#fff;
+    border-radius:6px;
+    padding:0;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    box-shadow:0 1px 3px rgba(0,0,0,.04);
+    border-left:3px solid #409EFF;
+    /* 注意：不要加 overflow:hidden，否则会裁掉「单人评分▾」下拉菜单 */
+    position:relative;
+  }
+  /* 由 candidate-tabs-wrap 自己处理 tab 溢出，用圆角裁 tab 背景 */
+  .candidate-tabs-wrap { border-radius:4px; }
+  .student-bar .name {
+    font-size:16px; font-weight:600; color:#303133;
+  }
+  .student-bar .name .idx { color:#409EFF; margin-right:4px; }
+  .student-bar .actions { display:flex; gap:10px; padding:10px 16px 10px 10px; flex-shrink:0; }
+
+  /* 顶部考生 Tab 签（单人模式） */
+  .candidate-tabs-wrap {
+    flex:1;
+    display:flex;
+    overflow-x:auto;
+    gap:0;
+    min-width:0;
+    padding-left:4px;
+    scrollbar-width:thin;
+  }
+  .candidate-tabs-wrap::-webkit-scrollbar { height:4px; }
+  .candidate-tabs-wrap::-webkit-scrollbar-thumb { background:#dcdfe6; border-radius:2px; }
+  .c-tab {
+    padding:12px 14px;
+    cursor:pointer;
+    font-size:14px;
+    color:#606266;
+    border-bottom:2px solid transparent;
+    transition:all .2s;
+    display:flex;
+    align-items:center;
+    gap:6px;
+    white-space:nowrap;
+    flex-shrink:0;
+    position:relative;
+  }
+  .c-tab:hover { color:#409EFF; background:#f8fbff; }
+  .c-tab.active {
+    color:#409EFF;
+    border-bottom-color:#409EFF;
+    background:#ecf5ff;
+    font-weight:500;
+  }
+  .c-tab .c-tab-avatar {
+    width:24px;
+    height:24px;
+    border-radius:50%;
+    flex-shrink:0;
+    overflow:hidden;
+    display:inline-flex;
+  }
+  .c-tab .c-tab-avatar svg { width:100%; height:100%; }
+  .c-tab .c-tab-idx { color:#409EFF; font-weight:500; }
+  .c-tab.active .c-tab-idx { color:#409EFF; }
+
+  /* 按钮样式 */
+  .btn {
+    padding:7px 16px;
+    border-radius:4px;
+    border:1px solid #dcdfe6;
+    background:#fff;
+    color:#606266;
+    cursor:pointer;
+    font-size:13px;
+    display:inline-flex;
+    align-items:center;
+    gap:5px;
+    transition:all .2s;
+    white-space:nowrap;
+  }
+  .btn:hover { color:#409EFF; border-color:#c6e2ff; background:#ecf5ff; }
+  .btn-primary { background:#409EFF; color:#fff; border-color:#409EFF; }
+  .btn-primary:hover { background:#66b1ff; border-color:#66b1ff; color:#fff; }
+  .btn-primary-plain { color:#409EFF; border-color:#b3d8ff; background:#ecf5ff; }
+  .btn-primary-plain:hover { background:#409EFF; color:#fff; border-color:#409EFF; }
+  .btn-danger { color:#f56c6c; border-color:#fbc4c4; background:#fef0f0; }
+  .btn-danger:hover { background:#f56c6c; color:#fff; border-color:#f56c6c; }
+  .btn-warning { color:#e6a23c; border-color:#f5dab1; background:#fdf6ec; }
+  .btn-warning:hover { background:#e6a23c; color:#fff; border-color:#e6a23c; }
+
+  /* 状态条 */
+  .status-bar {
+    background:#ecf5ff;
+    border-radius:6px;
+    padding:10px 20px;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    margin-top:10px;
+    border:1px solid #d9ecff;
+  }
+  .status-bar .left { display:flex; align-items:center; gap:18px; font-size:13px; color:#606266; }
+  .status-bar .refresh { color:#409EFF; cursor:pointer; display:flex; align-items:center; gap:4px; }
+  .status-bar .refresh:hover { text-decoration:underline; }
+  .status-bar .dot { display:inline-block; width:8px; height:8px; border-radius:50%; background:#409EFF; margin-right:5px; vertical-align:middle; }
+  .status-bar .actions { display:flex; gap:10px; }
+
+  /* Tab 容器 */
+  .tab-wrapper {
+    background:#fff;
+    border-radius:6px;
+    margin-top:10px;
+    box-shadow:0 1px 3px rgba(0,0,0,.04);
+    overflow:hidden;
+  }
+  .tab-header {
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    border-bottom:1px solid #e4e7ed;
+    padding:0 20px;
+    background:#fafbfc;
+  }
+  .tab-nav {
+    display:flex;
+    gap:2px;
+  }
+  .tab-item {
+    padding:14px 22px;
+    cursor:pointer;
+    font-size:14px;
+    color:#606266;
+    border-bottom:2px solid transparent;
+    margin-bottom:-1px;
+    transition:all .2s;
+    position:relative;
+    font-weight:500;
+  }
+  .tab-item:hover { color:#409EFF; }
+  .tab-item.active {
+    color:#409EFF;
+    border-bottom-color:#409EFF;
+    background:#fff;
+  }
+  .tab-item .badge {
+    display:inline-block;
+    background:#f0f2f5;
+    color:#909399;
+    padding:1px 6px;
+    border-radius:10px;
+    font-size:11px;
+    margin-left:4px;
+    font-weight:normal;
+  }
+  .tab-item.active .badge { background:#ecf5ff; color:#409EFF; }
+
+  .tab-header-actions { display:flex; gap:10px; padding:8px 0; }
+
+  /* Tab 内容 */
+  .tab-content { padding:24px; min-height:360px; }
+  .tab-panel { display:none; }
+  .tab-panel.active { display:block; animation:fadeIn .3s ease; }
+  @keyframes fadeIn {
+    from { opacity:0; transform:translateY(4px); }
+    to { opacity:1; transform:translateY(0); }
+  }
+
+  /* 小头像（标题条） */
+  .avatar-sm {
+    width:36px; height:36px;
+    border-radius:50%;
+    background:linear-gradient(135deg,#e8f1fc 0%,#d0e4ff 100%);
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    overflow:hidden;
+    border:2px solid #fff;
+    box-shadow:0 1px 3px rgba(64,158,255,.2);
+    flex-shrink:0;
+  }
+  .avatar-sm svg { width:100%; height:100%; }
+  .student-bar .name {
+    display:flex;
+    align-items:center;
+    gap:10px;
+  }
+
+  /* 考生信息面板 —— 左侧证件照 + 右侧信息 */
+  .info-panel {
+    display:flex;
+    gap:36px;
+    align-items:flex-start;
+  }
+  .id-photo-wrap {
+    flex-shrink:0;
+    text-align:center;
+  }
+  .id-photo {
+    width:160px;
+    height:210px;
+    background:linear-gradient(135deg,#dbeafe 0%,#bfdbfe 50%,#93c5fd 100%);
+    border-radius:6px;
+    overflow:hidden;
+    box-shadow:0 4px 16px rgba(64,158,255,.18);
+    border:1px solid #e4e7ed;
+    position:relative;
+  }
+  .id-photo svg { width:100%; height:100%; display:block; }
+  .id-photo-actions {
+    margin-top:12px;
+    display:flex;
+    flex-direction:column;
+    gap:6px;
+  }
+  .id-photo-actions .btn { width:160px; justify-content:center; }
+  .id-photo-caption {
+    font-size:12px;
+    color:#909399;
+    margin-top:8px;
+  }
+
+  .info-grid {
+    flex:1;
+    display:grid;
+    grid-template-columns:repeat(2, 1fr);
+    gap:14px 32px;
+    min-width:0;
+  }
+  .info-item {
+    display:flex;
+    padding:12px 0;
+    border-bottom:1px dashed #ebeef5;
+  }
+  .info-item .label {
+    color:#909399;
+    width:90px;
+    flex-shrink:0;
+  }
+  .info-item .value {
+    color:#303133;
+    font-weight:500;
+  }
+  .info-item .value.status {
+    color:#67c23a;
+  }
+  .info-item .value.male {
+    color:#409EFF;
+  }
+  .more-info-link {
+    margin-top:16px;
+    color:#409EFF;
+    cursor:pointer;
+    font-size:13px;
+    display:inline-flex;
+    align-items:center;
+    gap:3px;
+  }
+  .more-info-link:hover { text-decoration:underline; }
+
+  /* 评分表面板 */
+  .score-header {
+    background:#f5f7fa;
+    padding:14px 20px;
+    border-radius:4px;
+    text-align:right;
+    font-size:15px;
+    color:#606266;
+    margin-bottom:24px;
+  }
+  .score-header .total { color:#f56c6c; font-size:22px; font-weight:600; margin:0 4px; }
+
+  .score-item {
+    padding:18px 0;
+    border-bottom:1px solid #f0f0f0;
+  }
+  .score-item:last-child { border-bottom:none; }
+  .score-item .si-title {
+    font-size:14px;
+    color:#303133;
+    margin-bottom:16px;
+    font-weight:500;
+  }
+  .score-row {
+    display:flex;
+    align-items:center;
+    gap:20px;
+  }
+  .slider {
+    flex:1;
+    position:relative;
+    height:6px;
+    background:#e4e7ed;
+    border-radius:3px;
+    cursor:pointer;
+  }
+  .slider-fill {
+    position:absolute;
+    left:0; top:0; bottom:0;
+    background:linear-gradient(90deg,#409EFF,#66b1ff);
+    border-radius:3px;
+    width:84%;
+  }
+  .slider-handle {
+    position:absolute;
+    top:50%;
+    left:84%;
+    transform:translate(-50%,-50%);
+    width:18px; height:18px;
+    background:#fff;
+    border:2px solid #409EFF;
+    border-radius:50%;
+    box-shadow:0 2px 6px rgba(64,158,255,.3);
+    cursor:grab;
+  }
+  .score-input {
+    display:flex;
+    flex-direction:column;
+    align-items:flex-end;
+    gap:4px;
+    min-width:140px;
+  }
+  .score-range {
+    display:flex;
+    justify-content:space-between;
+    width:100%;
+    font-size:12px;
+    color:#909399;
+    padding:0 6px;
+  }
+  .score-spinner {
+    display:flex;
+    align-items:center;
+    border:1px solid #dcdfe6;
+    border-radius:4px;
+    overflow:hidden;
+  }
+  .score-spinner button {
+    width:28px; height:28px;
+    background:#f5f7fa;
+    border:none;
+    cursor:pointer;
+    color:#606266;
+    font-size:14px;
+  }
+  .score-spinner button:hover { color:#409EFF; }
+  .score-spinner input {
+    width:70px;
+    height:28px;
+    border:none;
+    border-left:1px solid #dcdfe6;
+    border-right:1px solid #dcdfe6;
+    text-align:center;
+    font-size:14px;
+    color:#303133;
+    outline:none;
+  }
+
+  /* 试题面板 */
+  .question-card {
+    border:1px solid #ebeef5;
+    border-radius:6px;
+    padding:18px;
+    margin-bottom:14px;
+    background:#fff;
+    transition:all .2s;
+  }
+  .question-card:hover { border-color:#c6e2ff; box-shadow:0 2px 8px rgba(64,158,255,.08); }
+  .question-card .q-head {
+    display:flex;
+    align-items:center;
+    gap:10px;
+    margin-bottom:10px;
+  }
+  .q-tag {
+    background:#ecf5ff;
+    color:#409EFF;
+    padding:2px 8px;
+    border-radius:3px;
+    font-size:12px;
+  }
+  .q-title { font-weight:500; color:#303133; }
+  .q-body { color:#606266; line-height:1.7; }
+
+  /* 附件面板 */
+  .attachment-view {
+    display:flex;
+    gap:20px;
+    align-items:flex-start;
+  }
+  .attachment-preview {
+    flex:1;
+    background:#f5f7fa;
+    border:1px dashed #dcdfe6;
+    border-radius:6px;
+    padding:40px;
+    min-height:300px;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    color:#909399;
+  }
+  .attachment-preview .ico {
+    width:56px; height:56px;
+    background:#409EFF;
+    border-radius:10px;
+    color:#fff;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-size:22px;
+    font-weight:600;
+    margin-bottom:14px;
+  }
+  .attachment-preview .fname { color:#303133; font-size:15px; margin-bottom:6px; }
+  .attachment-preview .fmeta { font-size:12px; margin-bottom:18px; }
+  .attachment-sidebar {
+    width:240px;
+  }
+  .attachment-sidebar h4 {
+    font-size:13px;
+    color:#909399;
+    font-weight:normal;
+    margin-bottom:10px;
+  }
+  .att-list-item {
+    padding:10px 12px;
+    border-radius:4px;
+    margin-bottom:6px;
+    cursor:pointer;
+    display:flex;
+    align-items:center;
+    gap:8px;
+    font-size:13px;
+    color:#606266;
+  }
+  .att-list-item:hover { background:#f5f7fa; }
+  .att-list-item.current { background:#ecf5ff; color:#409EFF; }
+
+  /* 图标模拟 */
+  .icon {
+    display:inline-block;
+    width:14px; height:14px;
+    vertical-align:-2px;
+  }
+
+  /* 说明标注 */
+  .note {
+    max-width:1400px;
+    margin:20px auto 0;
+    padding:12px 20px;
+    background:#fdf6ec;
+    border-left:3px solid #e6a23c;
+    color:#7d5d2a;
+    font-size:13px;
+    border-radius:4px;
+  }
+  .note b { color:#5a3f12; }
+
+  /* ========== 会议分屏模式 ========== */
+  /* 进入会议后，body 整体切换到分屏布局 */
+  body.in-meeting {
+    overflow:hidden;
+    height:100vh;
+  }
+  body.in-meeting .note { display:none; }
+
+  /* 分屏容器 —— 固定在顶部栏之下，占满剩余视口 */
+  .split-layout {
+    display:none;
+    position:fixed;
+    top:52px;
+    left:0;
+    right:0;
+    bottom:0;
+    background:#1a1a1a;
+    z-index:50;
+  }
+  body.in-meeting .split-layout { display:flex; }
+  body.in-meeting .container { display:none; }
+
+  /* 左侧 Zoom 会议区域 */
+  .zoom-panel {
+    width:45%;
+    min-width:420px;
+    background:#0a0a0a;
+    display:flex;
+    flex-direction:column;
+    position:relative;
+    border-right:1px solid #000;
+  }
+  .zoom-header {
+    height:38px;
+    background:#1e1e1e;
+    color:#e5e5e5;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    padding:0 14px;
+    font-size:12px;
+    border-bottom:1px solid #333;
+  }
+  .zoom-header .z-left { display:flex; align-items:center; gap:10px; }
+  .zoom-header .z-logo {
+    background:#2d8cff;
+    color:#fff;
+    font-weight:700;
+    font-size:11px;
+    padding:2px 8px;
+    border-radius:3px;
+    letter-spacing:.5px;
+  }
+  .zoom-header .z-status {
+    display:flex; align-items:center; gap:5px;
+    color:#7ee07e;
+  }
+  .zoom-header .z-dot {
+    width:7px; height:7px;
+    background:#42c767;
+    border-radius:50%;
+    animation:zpulse 1.6s ease-in-out infinite;
+  }
+  @keyframes zpulse {
+    0%,100% { opacity:1; transform:scale(1); }
+    50%     { opacity:.5; transform:scale(.85); }
+  }
+  .zoom-header .z-timer { color:#aaa; font-variant-numeric:tabular-nums; }
+
+  /* 主视频区 —— 黑色方块 */
+  .zoom-main {
+    flex:1;
+    background:#000;
+    position:relative;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    overflow:hidden;
+  }
+  .zoom-main .z-name-tag {
+    position:absolute;
+    left:12px;
+    bottom:12px;
+    background:rgba(0,0,0,.65);
+    color:#fff;
+    font-size:12px;
+    padding:4px 10px;
+    border-radius:3px;
+    display:flex;
+    align-items:center;
+    gap:6px;
+  }
+  .zoom-main .z-mic {
+    width:14px; height:14px;
+    background:#42c767;
+    border-radius:2px;
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    color:#000;
+    font-size:9px;
+    font-weight:700;
+  }
+  .zoom-main .z-placeholder {
+    color:#444;
+    font-size:13px;
+    text-align:center;
+    letter-spacing:2px;
+  }
+  .zoom-main .z-placeholder .z-ph-icon {
+    font-size:48px;
+    margin-bottom:10px;
+    opacity:.35;
+  }
+
+  /* 小窗（自己） */
+  .zoom-self {
+    position:absolute;
+    right:10px;
+    top:10px;
+    width:130px;
+    height:90px;
+    background:#111;
+    border:1px solid #333;
+    border-radius:4px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    color:#555;
+    font-size:11px;
+  }
+  .zoom-self .z-self-tag {
+    position:absolute;
+    left:4px;
+    bottom:4px;
+    background:rgba(0,0,0,.7);
+    color:#fff;
+    font-size:10px;
+    padding:1px 5px;
+    border-radius:2px;
+  }
+
+  /* 底部控制栏 */
+  .zoom-controls {
+    height:58px;
+    background:#1e1e1e;
+    border-top:1px solid #333;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:14px;
+    padding:0 14px;
+  }
+  .z-ctrl {
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    gap:2px;
+    color:#d0d0d0;
+    font-size:10px;
+    cursor:pointer;
+    padding:4px 8px;
+    border-radius:4px;
+    min-width:48px;
+    transition:background .15s;
+  }
+  .z-ctrl:hover { background:#2a2a2a; }
+  .z-ctrl .z-ic {
+    font-size:18px;
+    line-height:1;
+  }
+  .z-ctrl.z-end {
+    background:#e02d2d;
+    color:#fff;
+    padding:6px 14px;
+    border-radius:4px;
+    font-size:11px;
+    font-weight:500;
+  }
+  .z-ctrl.z-end:hover { background:#c41f1f; }
+  .z-ctrl.z-end .z-ic { font-size:14px; }
+
+  /* 右侧评分页面容器 —— 内嵌现有 container */
+  .score-panel {
+    flex:1;
+    background:#f5f7fa;
+    overflow-y:auto;
+    overflow-x:hidden;
+  }
+  .score-panel .container {
+    display:block !important;
+    max-width:none;
+    padding:14px 18px 30px;
+  }
+
+  /* 分屏模式下，评分页内部的间距和字号做微调 */
+  body.in-meeting .score-panel .student-bar { padding:12px 16px; }
+  body.in-meeting .score-panel .status-bar { padding:8px 16px; }
+  body.in-meeting .score-panel .tab-content { padding:18px; }
+  body.in-meeting .score-panel .info-panel { gap:24px; }
+  body.in-meeting .score-panel .info-grid {
+    grid-template-columns:1fr;
+    gap:8px 0;
+  }
+  body.in-meeting .score-panel .tab-item { padding:12px 16px; font-size:13px; }
+
+  /* 进入会议按钮状态 */
+  .btn.in-meeting-active {
+    background:#42c767 !important;
+    color:#fff !important;
+    border-color:#42c767 !important;
+  }
+
+  /* 分隔拖拽手柄（视觉提示，非实际功能） */
+  .split-divider {
+    width:4px;
+    background:#000;
+    cursor:col-resize;
+    position:relative;
+    flex-shrink:0;
+  }
+  .split-divider::before {
+    content:'';
+    position:absolute;
+    top:50%;
+    left:50%;
+    transform:translate(-50%,-50%);
+    width:2px;
+    height:40px;
+    background:#444;
+    border-radius:1px;
+  }
+
+  /* ============================================== */
+  /* ============== 集体评分模式 ================== */
+  /* ============================================== */
+
+  /* 评分模式下拉菜单 */
+  .mode-dropdown-wrap {
+    position:relative;
+    display:inline-block;
+  }
+  .mode-menu {
+    display:none;
+    position:absolute;
+    top:calc(100% + 4px);
+    right:0;
+    min-width:130px;
+    background:#fff;
+    border:1px solid #e4e7ed;
+    border-radius:4px;
+    box-shadow:0 4px 16px rgba(0,0,0,.1);
+    z-index:200;
+    overflow:hidden;
+  }
+  .mode-menu.show { display:block; animation:fadeIn .15s ease; }
+  .mode-menu .menu-item {
+    padding:10px 16px;
+    font-size:14px;
+    color:#606266;
+    cursor:pointer;
+    transition:background .15s, color .15s;
+    display:flex;
+    align-items:center;
+    gap:6px;
+  }
+  .mode-menu .menu-item:hover { background:#ecf5ff; color:#409EFF; }
+  .mode-menu .menu-item.active { color:#409EFF; font-weight:500; background:#f5f7fa; }
+  .mode-menu .menu-item .check {
+    opacity:0;
+    color:#409EFF;
+    font-size:13px;
+    margin-left:auto;
+  }
+  .mode-menu .menu-item.active .check { opacity:1; }
+
+  /* 集体评分根布局 —— 固定在顶部栏之下 */
+  body.collective-mode { overflow:hidden; height:100vh; }
+  body.collective-mode .note { display:none; }
+  body.collective-mode .container { display:none !important; }
+  body.collective-mode .split-layout { display:none !important; }
+
+  .collective-layout {
+    display:none;
+    position:fixed;
+    top:52px;
+    left:0; right:0; bottom:0;
+    background:#f5f7fa;
+    z-index:50;
+  }
+  /* ----- 默认集体评分：右侧评分表占满（左侧空） ----- */
+  body.collective-mode .collective-layout {
+    display:grid;
+    grid-template-columns:1fr;
+    grid-template-rows:1fr;
+    grid-template-areas:"cscoring";
+  }
+  body.collective-mode .cl-tabs-area,
+  body.collective-mode .cl-meeting-area { display:none; }
+
+  /* ----- 只选了考生（未进入会议）：左 Tab / 右评分表 ----- */
+  body.collective-mode.candidate-selected:not(.in-meeting) .collective-layout {
+    grid-template-columns:45% 55%;
+    grid-template-rows:1fr;
+    grid-template-areas:"ctabs cscoring";
+  }
+  body.collective-mode.candidate-selected:not(.in-meeting) .cl-tabs-area {
+    display:flex;
+    grid-area:ctabs;
+  }
+
+  /* ----- 只进入会议（未选考生）：左会议 / 右评分表 ----- */
+  body.collective-mode.in-meeting:not(.candidate-selected) .collective-layout {
+    grid-template-columns:45% 55%;
+    grid-template-rows:1fr;
+    grid-template-areas:"cmeeting cscoring";
+  }
+  body.collective-mode.in-meeting:not(.candidate-selected) .cl-meeting-area {
+    display:flex;
+    grid-area:cmeeting;
+  }
+
+  /* ----- 会议中 + 已选考生：左上会议 / 左下 Tabs / 右评分表 ----- */
+  body.collective-mode.in-meeting.candidate-selected .collective-layout {
+    grid-template-columns:45% 55%;
+    grid-template-rows:48% 52%;
+    grid-template-areas:
+      "cmeeting cscoring"
+      "ctabs    cscoring";
+  }
+  body.collective-mode.in-meeting.candidate-selected .cl-meeting-area {
+    display:flex;
+    grid-area:cmeeting;
+  }
+  body.collective-mode.in-meeting.candidate-selected .cl-tabs-area {
+    display:flex;
+    grid-area:ctabs;
+  }
+
+  /* 姓名可点击 */
+  .cl-table .name-cell {
+    cursor:pointer;
+    user-select:none;
+    transition:opacity .15s;
+  }
+  .cl-table .name-cell:hover { opacity:.7; text-decoration:underline; }
+
+  /* 左上：会议窗口区 */
+  .cl-meeting-area {
+    grid-area:cmeeting;
+    background:#0a0a0a;
+    display:flex;
+    flex-direction:column;
+    border-right:1px solid #000;
+    border-bottom:1px solid #000;
+    overflow:hidden;
+    min-height:0;
+  }
+  .cl-meeting-area .zoom-header { flex-shrink:0; }
+  .cl-meeting-area .zoom-main { flex:1; min-height:0; }
+  .cl-meeting-area .zoom-controls {
+    height:48px;
+    gap:8px;
+    padding:0 10px;
+    flex-shrink:0;
+  }
+  .cl-meeting-area .z-ctrl { min-width:40px; font-size:9px; padding:3px 5px; }
+  .cl-meeting-area .z-ctrl .z-ic { font-size:15px; }
+  .cl-meeting-area .z-ctrl.z-end { padding:5px 10px; font-size:10px; }
+  .cl-meeting-area .zoom-self { width:100px; height:70px; font-size:10px; }
+
+  /* 左下：Tab 切换区 */
+  .cl-tabs-area {
+    grid-area:ctabs;
+    background:#fff;
+    display:flex;
+    flex-direction:column;
+    overflow:hidden;
+    border-right:1px solid #000;
+    min-height:0;
+  }
+  /* 候选人 header 条（黑色） */
+  .cl-candidate-bar {
+    height:44px;
+    background:#2c2c2c;
+    color:#fff;
+    display:flex;
+    align-items:center;
+    padding:0 16px;
+    font-size:14px;
+    font-weight:500;
+    gap:10px;
+    flex-shrink:0;
+  }
+  .cl-candidate-bar .cl-close-btn {
+    margin-left:auto;
+    width:24px; height:24px;
+    background:rgba(255,255,255,.15);
+    border-radius:50%;
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    cursor:pointer;
+    font-size:14px;
+    color:#fff;
+    transition:background .15s;
+  }
+  .cl-candidate-bar .cl-close-btn:hover { background:rgba(255,255,255,.28); }
+
+  /* Tab 导航（集体模式下） */
+  .cl-tab-header {
+    display:flex;
+    justify-content:center;
+    gap:8px;
+    border-bottom:1px solid #e4e7ed;
+    background:#fafbfc;
+    padding:0 16px;
+    flex-shrink:0;
+  }
+  .cl-tab-item {
+    padding:12px 18px;
+    cursor:pointer;
+    font-size:14px;
+    color:#606266;
+    border-bottom:2px solid transparent;
+    margin-bottom:-1px;
+    transition:all .2s;
+    font-weight:500;
+  }
+  .cl-tab-item:hover { color:#409EFF; }
+  .cl-tab-item.active {
+    color:#409EFF;
+    border-bottom-color:#409EFF;
+  }
+
+  /* Tab 内容区 */
+  .cl-tab-content {
+    flex:1;
+    overflow:auto;
+    padding:20px;
+    min-height:0;
+  }
+  .cl-tab-panel { display:none; }
+  .cl-tab-panel.active { display:block; animation:fadeIn .25s ease; }
+
+  /* 未进入会议时，tab 内容更宽松一些 */
+  body.collective-mode:not(.in-meeting) .cl-tab-content { padding:24px; }
+  body.collective-mode:not(.in-meeting) .cl-candidate-bar { height:48px; }
+
+  /* 右侧：集体评分表 */
+  .cl-scoring-area {
+    grid-area:cscoring;
+    background:#fff;
+    display:flex;
+    flex-direction:column;
+    /* 不加 overflow:hidden —— 否则会裁掉工具栏里的「集体评分▾」下拉菜单。
+       内部 cl-table-wrap 自己有 overflow:auto 处理表格滚动 */
+    min-height:0;
+  }
+  .cl-score-toolbar {
+    display:flex;
+    align-items:center;
+    justify-content:flex-end;
+    gap:10px;
+    padding:12px 20px;
+    flex-shrink:0;
+  }
+  .cl-score-toolbar .btn-done {
+    background:#409EFF;
+    color:#fff;
+    border-color:#409EFF;
+    padding:8px 22px;
+    font-weight:500;
+  }
+  .cl-score-toolbar .btn-done:hover { background:#66b1ff; border-color:#66b1ff; color:#fff; }
+
+  /* 评分标准说明 */
+  .cl-criteria {
+    padding:10px 20px;
+    font-size:14px;
+    color:#303133;
+    display:flex;
+    align-items:center;
+    gap:22px;
+    flex-wrap:wrap;
+    flex-shrink:0;
+  }
+  .cl-criteria .c-label { font-weight:600; color:#303133; }
+  .cl-criteria .c-item {
+    display:inline-flex;
+    align-items:center;
+    gap:6px;
+    color:#606266;
+  }
+  .cl-criteria .c-item::before {
+    content:'';
+    width:8px; height:8px;
+    border:1.5px solid #909399;
+    border-radius:50%;
+    display:inline-block;
+  }
+
+  /* 集体评分表 */
+  .cl-table-wrap {
+    padding:4px 20px 20px;
+    overflow:auto;
+    flex:1;
+    min-height:0;
+  }
+  .cl-table {
+    width:100%;
+    border-collapse:collapse;
+    background:#fff;
+    font-size:14px;
+  }
+  .cl-table th,
+  .cl-table td {
+    border:1px solid #ebeef5;
+    padding:12px 10px;
+    text-align:center;
+    color:#303133;
+    vertical-align:middle;
+  }
+  .cl-table thead th {
+    background:#fafbfc;
+    font-weight:500;
+    color:#303133;
+  }
+  .cl-table thead th.underline-th {
+    text-decoration:underline;
+    text-decoration-color:#c0c4cc;
+    text-underline-offset:3px;
+  }
+  .cl-table tbody tr:hover { background:#fafbfc; }
+  .cl-table .row-idx { color:#409EFF; font-weight:500; }
+  .cl-table .name-cell {
+    color:#f56c6c;
+    display:inline-flex;
+    align-items:center;
+    gap:4px;
+  }
+  .cl-table .name-cell::before {
+    content:'👤';
+    font-size:12px;
+    filter:grayscale(0) hue-rotate(-20deg);
+  }
+  .cl-table .score-dd {
+    color:#303133;
+    cursor:pointer;
+    display:inline-flex;
+    align-items:center;
+    gap:4px;
+    padding:2px 6px;
+    border-radius:3px;
+    transition:background .15s;
+  }
+  .cl-table .score-dd:hover { background:#ecf5ff; color:#409EFF; }
+  .cl-table .score-dd::after {
+    content:'▾';
+    color:#909399;
+    font-size:10px;
+    margin-left:2px;
+  }
+  .cl-table .score-dd.empty { color:#909399; }
+  .cl-table .level-cell.fail { color:#f56c6c; }
+  .cl-table .edit-link {
+    color:#409EFF;
+    cursor:pointer;
+    display:inline-flex;
+    align-items:center;
+    gap:4px;
+    font-size:13px;
+  }
+  .cl-table .edit-link:hover { text-decoration:underline; }
+  .cl-table .edit-link::before { content:'✎'; font-size:12px; }
+
+  /* 当前正在评分的行高亮 */
+  .cl-table tbody tr.current-row {
+    background:#ecf5ff !important;
+  }
+  .cl-table tbody tr.current-row td:first-child { position:relative; }
+  .cl-table tbody tr.current-row td:first-child::before {
+    content:'';
+    position:absolute;
+    left:0; top:0; bottom:0;
+    width:3px;
+    background:#409EFF;
+  }
+
+  /* 集体模式下的考生信息面板紧凑显示 */
+  body.collective-mode .cl-tab-content .info-panel { gap:20px; }
+  body.collective-mode.in-meeting .cl-tab-content .info-panel {
+    gap:16px;
+  }
+  body.collective-mode.in-meeting .cl-tab-content .id-photo {
+    width:110px; height:140px;
+  }
+  body.collective-mode.in-meeting .cl-tab-content .id-photo-actions .btn {
+    width:110px; font-size:12px; padding:5px 10px;
+  }
+  body.collective-mode.in-meeting .cl-tab-content .info-grid {
+    grid-template-columns:1fr;
+    gap:4px 0;
+  }
+  body.collective-mode.in-meeting .cl-tab-content .info-item { padding:8px 0; }
+</style>
+</head>
+<body>
+
+<!-- 顶部导航 -->
+<div class="top-bar">
+  <span class="back">←</span>
+  <div class="title">ysmsap1</div>
+  <div class="tools">
+    <span class="item">🔤 正常 <span class="caret">▾</span></span>
+    <span class="item">🌐 中文简体 <span class="caret">▾</span></span>
+    <span class="item">👤 ysmsg1</span>
+  </div>
+</div>
+
+<!-- ========== 会议分屏布局（进入会议后显示） ========== -->
+<div class="split-layout" id="splitLayout">
+  <!-- 左侧 Zoom 会议 -->
+  <div class="zoom-panel">
+    <div class="zoom-header">
+      <div class="z-left">
+        <span class="z-logo">zoom</span>
+        <span class="z-status"><span class="z-dot"></span>会议进行中</span>
+      </div>
+      <div class="z-timer" id="zoomTimer">00:00:00</div>
+    </div>
+
+    <div class="zoom-main">
+      <!-- 主视频（黑色方块） -->
+      <div class="z-placeholder">
+        <div class="z-ph-icon">📹</div>
+        <div>等待考生视频接入</div>
+      </div>
+      <!-- 考生名牌 -->
+      <div class="z-name-tag">
+        <span class="z-mic">🎤</span>
+        <span id="singleZoomNameTag">孙诸颜 · 考生</span>
+      </div>
+      <!-- 自己的小窗口 -->
+      <div class="zoom-self">
+        我
+        <div class="z-self-tag">考官 ysmsg1</div>
+      </div>
+    </div>
+
+    <div class="zoom-controls">
+      <div class="z-ctrl"><div class="z-ic">🎤</div><div>静音</div></div>
+      <div class="z-ctrl"><div class="z-ic">📹</div><div>视频</div></div>
+      <div class="z-ctrl"><div class="z-ic">🔒</div><div>安全</div></div>
+      <div class="z-ctrl"><div class="z-ic">👥</div><div>参会者</div></div>
+      <div class="z-ctrl"><div class="z-ic">💬</div><div>聊天</div></div>
+      <div class="z-ctrl"><div class="z-ic">⬆</div><div>共享屏幕</div></div>
+      <div class="z-ctrl"><div class="z-ic">⏺</div><div>录制</div></div>
+      <div class="z-ctrl z-end" id="leaveMeetingBtn"><div class="z-ic">📞</div><div>结束会议</div></div>
+    </div>
+  </div>
+
+  <!-- 分隔条 -->
+  <div class="split-divider"></div>
+
+  <!-- 右侧评分页面（container 会被 JS 移动到这里） -->
+  <div class="score-panel" id="scorePanel"></div>
+</div>
+
+<!-- ========== 集体评分布局 ========== -->
+<div class="collective-layout" id="collectiveLayout">
+
+  <!-- 左上：会议窗口（仅会议模式显示） -->
+  <div class="cl-meeting-area">
+    <div class="zoom-header">
+      <div class="z-left">
+        <span class="z-logo">zoom</span>
+        <span class="z-status"><span class="z-dot"></span>会议进行中</span>
+      </div>
+      <div class="z-timer" id="clZoomTimer">00:00:00</div>
+    </div>
+    <div class="zoom-main">
+      <div class="z-placeholder">
+        <div class="z-ph-icon">📹</div>
+        <div>等待考生视频接入</div>
+      </div>
+      <div class="z-name-tag">
+        <span class="z-mic">🎤</span>
+        <span id="clZoomNameTag">唐丹丹 · 考生</span>
+      </div>
+      <div class="zoom-self">
+        我
+        <div class="z-self-tag">考官 03谢辰</div>
+      </div>
+    </div>
+    <div class="zoom-controls">
+      <div class="z-ctrl"><div class="z-ic">🎤</div><div>静音</div></div>
+      <div class="z-ctrl"><div class="z-ic">📹</div><div>视频</div></div>
+      <div class="z-ctrl"><div class="z-ic">👥</div><div>参会者</div></div>
+      <div class="z-ctrl"><div class="z-ic">💬</div><div>聊天</div></div>
+      <div class="z-ctrl"><div class="z-ic">⏺</div><div>录制</div></div>
+      <div class="z-ctrl z-end" id="clLeaveMeetingBtn"><div class="z-ic">📞</div><div>结束会议</div></div>
+    </div>
+  </div>
+
+  <!-- 左下（或左全）：Tab 切换区 -->
+  <div class="cl-tabs-area">
+    <!-- 当前考生指示条 -->
+    <div class="cl-candidate-bar">
+      <span>👤</span>
+      <span id="clCurrentName">唐丹丹</span>
+      <span class="cl-close-btn" id="clCloseBtn" title="关闭详情">✕</span>
+    </div>
+
+    <!-- Tab 导航：考生信息 / 试题 / 附件1 / 附件2 / 附件3 -->
+    <div class="cl-tab-header">
+      <div class="cl-tab-item active" data-ctab="info">考生信息</div>
+      <div class="cl-tab-item" data-ctab="questions">试题</div>
+      <div class="cl-tab-item" data-ctab="att1">附件1</div>
+      <div class="cl-tab-item" data-ctab="att2">附件2</div>
+      <div class="cl-tab-item" data-ctab="att3">附件3</div>
+    </div>
+
+    <!-- Tab 内容 -->
+    <div class="cl-tab-content">
+      <!-- 考生信息 -->
+      <div class="cl-tab-panel active" data-cpanel="info">
+        <div class="info-panel">
+          <div class="id-photo-wrap">
+            <div class="id-photo">
+              <svg viewBox="0 0 160 210" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid slice">
+                <defs>
+                  <linearGradient id="clPhotoBg" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stop-color="#f9a8d4"/>
+                    <stop offset="100%" stop-color="#ec4899"/>
+                  </linearGradient>
+                  <radialGradient id="clFaceShade" cx="0.5" cy="0.4" r="0.6">
+                    <stop offset="0%" stop-color="#fde3c7"/>
+                    <stop offset="100%" stop-color="#e8b88a"/>
+                  </radialGradient>
+                </defs>
+                <rect width="160" height="210" fill="url(#clPhotoBg)"/>
+                <path d="M0 210 Q0 155 40 140 L60 135 Q80 150 100 135 L120 140 Q160 155 160 210 Z" fill="#7c2d12"/>
+                <path d="M60 135 Q80 155 100 135 L95 160 Q80 170 65 160 Z" fill="#fff7ed"/>
+                <rect x="70" y="115" width="20" height="25" fill="url(#clFaceShade)"/>
+                <ellipse cx="80" cy="85" rx="26" ry="32" fill="url(#clFaceShade)"/>
+                <path d="M50 80 Q48 50 80 48 Q112 50 110 80 L108 90 Q105 72 80 68 Q55 72 52 90 Z" fill="#422006"/>
+                <path d="M65 82 Q70 80 75 82" stroke="#422006" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+                <path d="M85 82 Q90 80 95 82" stroke="#422006" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+                <ellipse cx="70" cy="88" rx="1.8" ry="2.2" fill="#422006"/>
+                <ellipse cx="90" cy="88" rx="1.8" ry="2.2" fill="#422006"/>
+                <path d="M80 93 L78 100 L82 100 Z" fill="#d4a373" opacity=".5"/>
+                <path d="M74 106 Q80 109 86 106" stroke="#be185d" stroke-width="1.4" fill="none" stroke-linecap="round"/>
+              </svg>
+            </div>
+            <div class="id-photo-caption">证件照 · 一寸</div>
+            <div class="id-photo-actions">
+              <button class="btn btn-primary-plain">🔍 查看原图</button>
+            </div>
+          </div>
+          <div class="info-grid">
+            <div class="info-item"><span class="label">姓名：</span><span class="value">唐丹丹</span></div>
+            <div class="info-item"><span class="label">性别：</span><span class="value" style="color:#f56c6c;">女</span></div>
+            <div class="info-item"><span class="label">编号：</span><span class="value">20</span></div>
+            <div class="info-item"><span class="label">所属组：</span><span class="value">现场日程0422</span></div>
+            <div class="info-item"><span class="label">面试状态：</span><span class="value status">● 待面试</span></div>
+            <div class="info-item"><span class="label">准考证号：</span><span class="value">202601020</span></div>
+            <div class="info-item"><span class="label">身份证号：</span><span class="value">3301**********5678</span></div>
+            <div class="info-item"><span class="label">联系电话：</span><span class="value">139****2234</span></div>
+            <div class="info-item"><span class="label">报考岗位：</span><span class="value">专题讲解岗</span></div>
+            <div class="info-item"><span class="label">毕业院校：</span><span class="value">XX师范大学</span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 试题 -->
+      <div class="cl-tab-panel" data-cpanel="questions">
+        <div class="question-card">
+          <div class="q-head"><span class="q-tag">题目 1</span><span class="q-title">请就指定专题进行5分钟讲解。</span></div>
+          <div class="q-body">考察考生的专题讲解能力、知识深度、语言表达以及现场仪态。</div>
+        </div>
+        <div class="question-card">
+          <div class="q-head"><span class="q-tag">题目 2</span><span class="q-title">在讲解过程中如何与观众互动？</span></div>
+          <div class="q-body">考察考生的临场应变、互动组织能力和礼仪表现。</div>
+        </div>
+      </div>
+
+      <!-- 附件1 -->
+      <div class="cl-tab-panel" data-cpanel="att1">
+        <div class="attachment-view">
+          <div class="attachment-preview">
+            <div class="ico">PDF</div>
+            <div class="fname">附件1 - 面试提问指南.pdf</div>
+            <div class="fmeta">2.4 MB · 12 页</div>
+            <button class="btn btn-primary">📥 下载 / 预览</button>
+          </div>
+          <div class="attachment-sidebar">
+            <h4>文件列表</h4>
+            <div class="att-list-item current">📄 面试提问指南.pdf</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 附件2 -->
+      <div class="cl-tab-panel" data-cpanel="att2">
+        <div class="attachment-view">
+          <div class="attachment-preview">
+            <div class="ico" style="background:#67c23a;">IMG</div>
+            <div class="fname">附件2 - 个人作品.jpg</div>
+            <div class="fmeta">1.8 MB · 图片</div>
+            <button class="btn btn-primary">📥 下载 / 预览</button>
+          </div>
+          <div class="attachment-sidebar">
+            <h4>文件列表</h4>
+            <div class="att-list-item current">🖼 个人作品.jpg</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 附件3 -->
+      <div class="cl-tab-panel" data-cpanel="att3">
+        <div class="attachment-view">
+          <div class="attachment-preview">
+            <div class="ico" style="background:#e6a23c;">DOC</div>
+            <div class="fname">附件3 - 学历证明.docx</div>
+            <div class="fmeta">0.6 MB · Word文档</div>
+            <button class="btn btn-primary">📥 下载 / 预览</button>
+          </div>
+          <div class="attachment-sidebar">
+            <h4>文件列表</h4>
+            <div class="att-list-item current">📝 学历证明.docx</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 右侧：集体评分表 -->
+  <div class="cl-scoring-area">
+    <!-- 顶部工具栏 -->
+    <div class="cl-score-toolbar">
+      <button class="btn btn-primary-plain" id="clEnterMeetingBtn">📹 进入会议</button>
+      <button class="btn btn-primary-plain">✍ 评分签字</button>
+      <button class="btn btn-primary-plain">⏱ 计时器</button>
+      <div class="mode-dropdown-wrap">
+        <button class="btn btn-primary-plain" id="modeDropdownBtn2">
+          👥 集体评分 <span style="font-size:10px;">▾</span>
+        </button>
+        <div class="mode-menu" id="modeMenu2">
+          <div class="menu-item" data-mode="single">
+            👤 单人评分 <span class="check">✓</span>
+          </div>
+          <div class="menu-item active" data-mode="collective">
+            👥 集体评分 <span class="check">✓</span>
+          </div>
+        </div>
+      </div>
+      <button class="btn btn-done">完成</button>
+    </div>
+
+    <!-- 评分标准说明 -->
+    <div class="cl-criteria">
+      <span class="c-label">评分标准:</span>
+      <span class="c-item">淘汰 0 - 59.9</span>
+      <span class="c-item">待定 60 - 69.9</span>
+      <span class="c-item">较好 70 - 79.9</span>
+      <span class="c-item">优秀 80 - 100.0</span>
+    </div>
+
+    <!-- 集体评分表 -->
+    <div class="cl-table-wrap">
+      <table class="cl-table">
+        <thead>
+          <tr>
+            <th rowspan="2" style="width:50px;"></th>
+            <th rowspan="2" style="width:110px;">姓名</th>
+            <th rowspan="2" style="width:80px;">编号</th>
+            <th colspan="2" class="subject-header">专题讲解</th>
+            <th rowspan="2" style="width:80px;">得分</th>
+            <th rowspan="2" style="width:80px;">等级</th>
+            <th rowspan="2" style="width:100px;">评语</th>
+          </tr>
+          <tr>
+            <th class="underline-th">专题讲解</th>
+            <th class="underline-th">礼仪标准</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="row-idx">1</td>
+            <td><span class="name-cell">孙诸颜</span></td>
+            <td>19</td>
+            <td><span class="score-dd">1分</span></td>
+            <td><span class="score-dd">1分</span></td>
+            <td>2</td>
+            <td class="level-cell fail">淘汰</td>
+            <td><span class="edit-link">编辑</span></td>
+          </tr>
+          <tr>
+            <td class="row-idx">2</td>
+            <td><span class="name-cell">唐丹丹</span></td>
+            <td>20</td>
+            <td><span class="score-dd empty">--</span></td>
+            <td><span class="score-dd empty">--</span></td>
+            <td>0</td>
+            <td>--</td>
+            <td><span class="edit-link">编辑</span></td>
+          </tr>
+          <tr>
+            <td class="row-idx">3</td>
+            <td><span class="name-cell">李明月</span></td>
+            <td>21</td>
+            <td><span class="score-dd empty">--</span></td>
+            <td><span class="score-dd empty">--</span></td>
+            <td>0</td>
+            <td>--</td>
+            <td><span class="edit-link">编辑</span></td>
+          </tr>
+          <tr>
+            <td class="row-idx">4</td>
+            <td><span class="name-cell">王俊凯</span></td>
+            <td>22</td>
+            <td><span class="score-dd empty">--</span></td>
+            <td><span class="score-dd empty">--</span></td>
+            <td>0</td>
+            <td>--</td>
+            <td><span class="edit-link">编辑</span></td>
+          </tr>
+          <tr>
+            <td class="row-idx">5</td>
+            <td><span class="name-cell">张雨欣</span></td>
+            <td>23</td>
+            <td><span class="score-dd empty">--</span></td>
+            <td><span class="score-dd empty">--</span></td>
+            <td>0</td>
+            <td>--</td>
+            <td><span class="edit-link">编辑</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<div class="container" id="mainContainer">
+
+  <!-- 考生标题条（精简版） -->
+  <div class="student-bar">
+    <div class="candidate-tabs-wrap" id="singleCandidateTabs">
+      <div class="c-tab active" data-name="孙诸颜">
+        <span class="c-tab-avatar">
+          <svg viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg">
+            <rect width="40" height="40" fill="#fde2e4"/>
+            <circle cx="20" cy="15" r="6" fill="#f56c6c" opacity=".85"/>
+            <path d="M8 36 Q8 24 20 24 Q32 24 32 36 Z" fill="#f56c6c" opacity=".85"/>
+          </svg>
+        </span>
+        <span><span class="c-tab-idx">1.</span>孙诸颜</span>
+      </div>
+      <div class="c-tab" data-name="唐丹丹">
+        <span class="c-tab-avatar">
+          <svg viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg">
+            <rect width="40" height="40" fill="#fde2e4"/>
+            <circle cx="20" cy="15" r="6" fill="#f56c6c" opacity=".85"/>
+            <path d="M8 36 Q8 24 20 24 Q32 24 32 36 Z" fill="#f56c6c" opacity=".85"/>
+          </svg>
+        </span>
+        <span><span class="c-tab-idx">2.</span>唐丹丹</span>
+      </div>
+      <div class="c-tab" data-name="李明月">
+        <span class="c-tab-avatar">
+          <svg viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg">
+            <rect width="40" height="40" fill="#fde2e4"/>
+            <circle cx="20" cy="15" r="6" fill="#f56c6c" opacity=".85"/>
+            <path d="M8 36 Q8 24 20 24 Q32 24 32 36 Z" fill="#f56c6c" opacity=".85"/>
+          </svg>
+        </span>
+        <span><span class="c-tab-idx">3.</span>李明月</span>
+      </div>
+      <div class="c-tab" data-name="王俊凯">
+        <span class="c-tab-avatar">
+          <svg viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg">
+            <rect width="40" height="40" fill="#e8f1fc"/>
+            <circle cx="20" cy="15" r="6" fill="#409EFF" opacity=".85"/>
+            <path d="M8 36 Q8 24 20 24 Q32 24 32 36 Z" fill="#409EFF" opacity=".85"/>
+          </svg>
+        </span>
+        <span><span class="c-tab-idx">4.</span>王俊凯</span>
+      </div>
+      <div class="c-tab" data-name="张雨欣">
+        <span class="c-tab-avatar">
+          <svg viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg">
+            <rect width="40" height="40" fill="#fde2e4"/>
+            <circle cx="20" cy="15" r="6" fill="#f56c6c" opacity=".85"/>
+            <path d="M8 36 Q8 24 20 24 Q32 24 32 36 Z" fill="#f56c6c" opacity=".85"/>
+          </svg>
+        </span>
+        <span><span class="c-tab-idx">5.</span>张雨欣</span>
+      </div>
+    </div>
+    <div class="actions">
+      <button class="btn btn-primary-plain" id="enterMeetingBtn">📹 进入会议</button>
+      <div class="mode-dropdown-wrap">
+        <button class="btn btn-primary-plain" id="modeDropdownBtn">
+          <span id="modeDropdownLabel">👤 单人评分</span> <span style="font-size:10px;">▾</span>
+        </button>
+        <div class="mode-menu" id="modeMenu">
+          <div class="menu-item active" data-mode="single">
+            👤 单人评分 <span class="check">✓</span>
+          </div>
+          <div class="menu-item" data-mode="collective">
+            👥 集体评分 <span class="check">✓</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 状态条 -->
+  <div class="status-bar">
+    <div class="left">
+      <span class="refresh">🔄 刷新</span>
+      <span><span class="dot"></span>ysmsg2 - 未开始</span>
+    </div>
+    <div class="actions">
+      <button class="btn btn-primary-plain">📋 查看历史成绩</button>
+      <button class="btn btn-danger">⚠ 舞弊</button>
+      <button class="btn btn-warning">📝 缺考</button>
+    </div>
+  </div>
+
+  <!-- Tab 区域 -->
+  <div class="tab-wrapper">
+    <div class="tab-header">
+      <div class="tab-nav">
+        <div class="tab-item" data-tab="info">考生信息</div>
+        <div class="tab-item active" data-tab="score">评分表</div>
+        <div class="tab-item" data-tab="questions">试题</div>
+        <div class="tab-item" data-tab="att1">附件1</div>
+        <div class="tab-item" data-tab="att2">附件2</div>
+        <div class="tab-item" data-tab="att3">附件3</div>
+      </div>
+      <div class="tab-header-actions">
+        <button class="btn btn-primary" id="editScoreBtn">✎ 修改成绩</button>
+      </div>
+    </div>
+
+    <div class="tab-content">
+
+      <!-- 考生信息 -->
+      <div class="tab-panel" id="panel-info">
+        <div class="info-panel">
+          <!-- 证件照 -->
+          <div class="id-photo-wrap">
+            <div class="id-photo">
+              <svg viewBox="0 0 160 210" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid slice">
+                <defs>
+                  <linearGradient id="photoBg" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stop-color="#60a5fa"/>
+                    <stop offset="100%" stop-color="#2563eb"/>
+                  </linearGradient>
+                  <radialGradient id="faceShade" cx="0.5" cy="0.4" r="0.6">
+                    <stop offset="0%" stop-color="#fde3c7"/>
+                    <stop offset="100%" stop-color="#e8b88a"/>
+                  </radialGradient>
+                </defs>
+                <!-- 背景 -->
+                <rect width="160" height="210" fill="url(#photoBg)"/>
+                <!-- 肩部/上身 -->
+                <path d="M0 210 Q0 155 40 140 L60 135 Q80 150 100 135 L120 140 Q160 155 160 210 Z" fill="#1e293b"/>
+                <!-- 衣领 -->
+                <path d="M60 135 Q80 155 100 135 L95 160 Q80 170 65 160 Z" fill="#f8fafc"/>
+                <!-- 脖子 -->
+                <rect x="70" y="115" width="20" height="25" fill="url(#faceShade)"/>
+                <!-- 脸 -->
+                <ellipse cx="80" cy="85" rx="26" ry="32" fill="url(#faceShade)"/>
+                <!-- 头发 -->
+                <path d="M54 78 Q52 55 80 50 Q108 55 106 78 Q104 65 80 62 Q56 65 54 78 Z" fill="#1e293b"/>
+                <!-- 眉毛 -->
+                <path d="M65 80 Q70 78 75 80" stroke="#1e293b" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+                <path d="M85 80 Q90 78 95 80" stroke="#1e293b" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+                <!-- 眼睛 -->
+                <ellipse cx="70" cy="86" rx="1.8" ry="2.2" fill="#1e293b"/>
+                <ellipse cx="90" cy="86" rx="1.8" ry="2.2" fill="#1e293b"/>
+                <!-- 鼻子 -->
+                <path d="M80 90 L78 98 L82 98 Z" fill="#d4a373" opacity=".5"/>
+                <!-- 嘴 -->
+                <path d="M74 104 Q80 107 86 104" stroke="#b45309" stroke-width="1.2" fill="none" stroke-linecap="round"/>
+              </svg>
+            </div>
+            <div class="id-photo-caption">证件照 · 一寸</div>
+            <div class="id-photo-actions">
+              <button class="btn btn-primary-plain">🔍 查看原图</button>
+            </div>
+          </div>
+
+          <!-- 信息栏 -->
+          <div class="info-grid" id="singleInfoGrid">
+            <div class="info-item"><span class="label">姓名：</span><span class="value">孙诸颜</span></div>
+            <div class="info-item"><span class="label">性别：</span><span class="value" style="color:#f56c6c;">女</span></div>
+            <div class="info-item"><span class="label">编号：</span><span class="value">19</span></div>
+            <div class="info-item"><span class="label">所属组：</span><span class="value">现场日程0422</span></div>
+            <div class="info-item"><span class="label">面试状态：</span><span class="value status">● 面试结束</span></div>
+            <div class="info-item"><span class="label">准考证号：</span><span class="value">202601019</span></div>
+            <div class="info-item"><span class="label">身份证号：</span><span class="value">3301**********2211</span></div>
+            <div class="info-item"><span class="label">联系电话：</span><span class="value">138****1122</span></div>
+            <div class="info-item"><span class="label">报考岗位：</span><span class="value">专题讲解岗</span></div>
+            <div class="info-item"><span class="label">毕业院校：</span><span class="value">XX大学</span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 评分表 -->
+      <div class="tab-panel active" id="panel-score">
+        <div class="score-header">总得分：<span class="total">84</span>分</div>
+
+        <div class="score-item">
+          <div class="si-title">1、评分项1</div>
+          <div class="score-row">
+            <div class="slider">
+              <div class="slider-fill"></div>
+              <div class="slider-handle"></div>
+            </div>
+            <div class="score-input">
+              <div class="score-range"><span>0</span><span>100</span></div>
+              <div class="score-spinner">
+                <button>−</button>
+                <input type="text" value="84">
+                <button>+</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 试题 -->
+      <div class="tab-panel" id="panel-questions">
+        <div class="question-card">
+          <div class="q-head"><span class="q-tag">题目 1</span><span class="q-title">请结合自身经历，谈谈你对该岗位的理解。</span></div>
+          <div class="q-body">考察考生对岗位职责的认知深度、逻辑表达能力以及个人与岗位的匹配度……</div>
+        </div>
+        <div class="question-card">
+          <div class="q-head"><span class="q-tag">题目 2</span><span class="q-title">遇到突发状况你会如何处理？请举例说明。</span></div>
+          <div class="q-body">考察考生的应急反应能力、沟通协调能力和结构化思维……</div>
+        </div>
+      </div>
+
+      <!-- 附件1 -->
+      <div class="tab-panel" id="panel-att1">
+        <div class="attachment-view">
+          <div class="attachment-preview">
+            <div class="ico">PDF</div>
+            <div class="fname">附件1 - 个人简历.pdf</div>
+            <div class="fmeta">2.4 MB · 3 页</div>
+            <button class="btn btn-primary">📥 下载 / 预览</button>
+          </div>
+          <div class="attachment-sidebar">
+            <h4>文件列表</h4>
+            <div class="att-list-item current">📄 个人简历.pdf</div>
+            <div class="att-list-item">🖼 证件照.jpg</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 附件2 -->
+      <div class="tab-panel" id="panel-att2">
+        <div class="attachment-view">
+          <div class="attachment-preview">
+            <div class="ico" style="background:#67c23a;">IMG</div>
+            <div class="fname">附件2 - 作品集.jpg</div>
+            <div class="fmeta">1.8 MB · 图片</div>
+            <button class="btn btn-primary">📥 下载 / 预览</button>
+          </div>
+          <div class="attachment-sidebar">
+            <h4>文件列表</h4>
+            <div class="att-list-item current">🖼 作品集.jpg</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 附件3 -->
+      <div class="tab-panel" id="panel-att3">
+        <div class="attachment-view">
+          <div class="attachment-preview">
+            <div class="ico" style="background:#e6a23c;">DOC</div>
+            <div class="fname">附件3 - 学历证明.docx</div>
+            <div class="fmeta">0.6 MB · Word文档</div>
+            <button class="btn btn-primary">📥 下载 / 预览</button>
+          </div>
+          <div class="attachment-sidebar">
+            <h4>文件列表</h4>
+            <div class="att-list-item current">📝 学历证明.docx</div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+</div>
+
+<!-- 说明 -->
+<div class="note">
+  <b>使用说明：</b>① 单人评分：顶部 5 个考生 tab 签，点击切换考生；② 集体评分：默认只显示右侧评分表，<b>点击评分表任意姓名</b>左侧弹出该考生 tab；③ <b>会议与评分模式解耦</b> —— 会议是群面容器，单人/集体评分可在会议中自由切换，会议不会被结束（计时器持续）；④ 进入会议后按钮变为「📞 结束会议」绿色，点击即可结束会议（与 Zoom 面板里的红色结束按钮等效）；⑤ 三区布局（会议 + 选考生）= 左上 Zoom / 左下 Tabs / 右评分表。
+</div>
+
+<script>
+  // ================== Tab 切换（单人评分模式） ==================
+  const tabs = document.querySelectorAll('.tab-item');
+  const panels = document.querySelectorAll('.tab-panel');
+  const editBtn = document.getElementById('editScoreBtn');
+
+  tabs.forEach(t => {
+    t.addEventListener('click', () => {
+      tabs.forEach(x => x.classList.remove('active'));
+      panels.forEach(x => x.classList.remove('active'));
+      t.classList.add('active');
+      const key = t.getAttribute('data-tab');
+      document.getElementById('panel-' + key).classList.add('active');
+
+      // 修改成绩按钮只在评分表 Tab 显示
+      editBtn.style.display = (key === 'score') ? 'inline-flex' : 'none';
+    });
+  });
+
+  // ================== Tab 切换（集体评分模式） ==================
+  const clTabs   = document.querySelectorAll('.cl-tab-item');
+  const clPanels = document.querySelectorAll('.cl-tab-panel');
+  clTabs.forEach(t => {
+    t.addEventListener('click', () => {
+      clTabs.forEach(x => x.classList.remove('active'));
+      clPanels.forEach(x => x.classList.remove('active'));
+      t.classList.add('active');
+      const key = t.getAttribute('data-ctab');
+      document.querySelector(`.cl-tab-panel[data-cpanel="${key}"]`).classList.add('active');
+    });
+  });
+
+  // ================== 模式下拉菜单（单人 / 集体） ==================
+  const modeDropdownBtn  = document.getElementById('modeDropdownBtn');
+  const modeMenu         = document.getElementById('modeMenu');
+  const modeDropdownBtn2 = document.getElementById('modeDropdownBtn2');
+  const modeMenu2        = document.getElementById('modeMenu2');
+  const modeLabel        = document.getElementById('modeDropdownLabel');
+
+  function toggleMenu(menu, btn) {
+    // 先关掉所有菜单
+    document.querySelectorAll('.mode-menu').forEach(m => {
+      if (m !== menu) m.classList.remove('show');
+    });
+    menu.classList.toggle('show');
+  }
+
+  modeDropdownBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    toggleMenu(modeMenu, modeDropdownBtn);
+  });
+  modeDropdownBtn2.addEventListener('click', (e) => {
+    e.stopPropagation();
+    toggleMenu(modeMenu2, modeDropdownBtn2);
+  });
+
+  // 点击页面其他地方关闭下拉
+  document.addEventListener('click', () => {
+    document.querySelectorAll('.mode-menu').forEach(m => m.classList.remove('show'));
+  });
+
+  // ================== 模式切换：单人 <-> 集体 ==================
+  function setMode(mode) {
+    const wasInMeeting   = document.body.classList.contains('in-meeting');
+    const wasCollective  = document.body.classList.contains('collective-mode');
+    const isCollective   = (mode === 'collective');
+    const isActuallyChanging = (isCollective !== wasCollective);
+
+    // 清理"已选中考生"的状态（集体模式专用）
+    document.body.classList.remove('candidate-selected');
+    document.querySelectorAll('.cl-table tbody tr').forEach(tr => tr.classList.remove('current-row'));
+
+    // 【关键】如果当前在会议中切换模式，保留会议、只移动 mainContainer 的 DOM 位置
+    //   单人 → 集体：mainContainer 从 scorePanel 移回 body 原位（会被 collective-mode CSS 隐藏）
+    //   集体 → 单人：mainContainer 移入 scorePanel（单人模式分屏右侧）
+    if (wasInMeeting && isActuallyChanging) {
+      if (isCollective) {
+        if (originalNext) originalParent.insertBefore(mainContainer, originalNext);
+        else              originalParent.appendChild(mainContainer);
+      } else {
+        scorePanel.appendChild(mainContainer);
+      }
+    }
+
+    if (isCollective) {
+      document.body.classList.add('collective-mode');
+      if (modeLabel) modeLabel.textContent = '👥 集体评分';
+    } else {
+      document.body.classList.remove('collective-mode');
+      if (modeLabel) modeLabel.textContent = '👤 单人评分';
+    }
+
+    // 更新菜单项的 active 状态
+    document.querySelectorAll('.mode-menu .menu-item').forEach(item => {
+      item.classList.toggle('active', item.getAttribute('data-mode') === mode);
+    });
+    // 同步更新右侧集体评分表上的按钮文案
+    if (modeDropdownBtn2) {
+      modeDropdownBtn2.innerHTML = (isCollective ? '👥 集体评分' : '👤 单人评分') + ' <span style="font-size:10px;">▾</span>';
+    }
+
+    // 关闭所有下拉
+    document.querySelectorAll('.mode-menu').forEach(m => m.classList.remove('show'));
+
+    // 如果切换时在会议中，让两个"进入会议/结束会议"按钮文案与会议状态同步
+    updateMeetingButtons();
+  }
+
+  // 两个"进入会议"按钮文案 / 高亮 状态的统一更新函数
+  function updateMeetingButtons() {
+    const inMeeting = document.body.classList.contains('in-meeting');
+    const txt = inMeeting ? '📞 结束会议' : '📹 进入会议';
+    const btns = [
+      document.getElementById('enterMeetingBtn'),
+      document.getElementById('clEnterMeetingBtn')
+    ];
+    btns.forEach(btn => {
+      if (!btn) return;
+      btn.textContent = txt;
+      btn.classList.toggle('in-meeting-active', inMeeting);
+    });
+  }
+
+  // 为所有菜单项绑定点击事件
+  document.querySelectorAll('.mode-menu .menu-item').forEach(item => {
+    item.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const mode = item.getAttribute('data-mode');
+      setMode(mode);
+    });
+  });
+
+  // ================== 会议相关 ==================
+  const enterBtn        = document.getElementById('enterMeetingBtn');
+  const leaveBtn        = document.getElementById('leaveMeetingBtn');          // 单人模式下的结束会议
+  const clLeaveBtn      = document.getElementById('clLeaveMeetingBtn');         // 集体模式下的结束会议
+  const mainContainer   = document.getElementById('mainContainer');
+  const scorePanel      = document.getElementById('scorePanel');
+  const zoomTimerEl     = document.getElementById('zoomTimer');
+  const clZoomTimerEl   = document.getElementById('clZoomTimer');
+
+  // 保留原容器在 body 中的位置（退出时放回去）
+  const originalParent = mainContainer.parentNode;
+  const originalNext   = mainContainer.nextSibling;
+
+  let timerInterval = null;
+  let startTs = 0;
+
+  function fmt(n){ return n.toString().padStart(2,'0'); }
+  function tickTimer(){
+    const s = Math.floor((Date.now() - startTs)/1000);
+    const str = `${fmt(Math.floor(s/3600))}:${fmt(Math.floor(s/60)%60)}:${fmt(s%60)}`;
+    if (zoomTimerEl)   zoomTimerEl.textContent   = str;
+    if (clZoomTimerEl) clZoomTimerEl.textContent = str;
+  }
+
+  function enterMeeting(){
+    const isCollective = document.body.classList.contains('collective-mode');
+
+    if (!isCollective) {
+      // 单人模式：把右侧评分面板移入分屏容器
+      scorePanel.appendChild(mainContainer);
+    }
+    // 集体模式下不需要移动 DOM，只需加 .in-meeting 让 CSS 自动切到上下布局
+
+    document.body.classList.add('in-meeting');
+
+    // 两个进入会议按钮同步变为"结束会议"
+    updateMeetingButtons();
+
+    // 启动计时器
+    startTs = Date.now();
+    tickTimer();
+    timerInterval = setInterval(tickTimer, 1000);
+  }
+
+  function leaveMeeting(silent){
+    const isCollective = document.body.classList.contains('collective-mode');
+
+    if (!isCollective) {
+      // 单人模式：把评分面板还原
+      if (originalNext) originalParent.insertBefore(mainContainer, originalNext);
+      else              originalParent.appendChild(mainContainer);
+    }
+
+    document.body.classList.remove('in-meeting');
+
+    // 两个按钮还原为"进入会议"
+    updateMeetingButtons();
+
+    clearInterval(timerInterval);
+    timerInterval = null;
+    if (zoomTimerEl)   zoomTimerEl.textContent   = '00:00:00';
+    if (clZoomTimerEl) clZoomTimerEl.textContent = '00:00:00';
+  }
+
+  // 单人模式"进入会议/结束会议"切换
+  enterBtn.addEventListener('click', () => {
+    if (document.body.classList.contains('in-meeting')) {
+      leaveMeeting(false);
+    } else {
+      enterMeeting();
+    }
+  });
+
+  // ================== 集体模式：点击姓名打开 Tab 面板 ==================
+  // 模拟的考生数据（用于在 tab 面板里动态展示）
+  const candidateData = {
+    '孙诸颜': { no:'19', idx:'1', gender:'女', status:'● 面试结束', status_color:'#f56c6c', phone:'138****1122', school:'XX大学', id:'3301**********2211' },
+    '唐丹丹': { no:'20', idx:'2', gender:'女', status:'● 待面试', status_color:'#67c23a', phone:'139****2234', school:'XX师范大学', id:'3301**********5678' },
+    '李明月': { no:'21', idx:'3', gender:'女', status:'● 待面试', status_color:'#67c23a', phone:'136****3377', school:'XX外国语大学', id:'3302**********8811' },
+    '王俊凯': { no:'22', idx:'4', gender:'男', status:'● 待面试', status_color:'#67c23a', phone:'137****5566', school:'XX财经大学', id:'3303**********4422' },
+    '张雨欣': { no:'23', idx:'5', gender:'女', status:'● 待面试', status_color:'#67c23a', phone:'135****7788', school:'XX大学', id:'3301**********9900' }
+  };
+
+  // ================== 单人评分模式：顶部考生 Tab 切换 ==================
+  function openSingleCandidate(name) {
+    const data = candidateData[name];
+    if (!data) return;
+
+    // 更新顶部 tab 的 active 状态
+    document.querySelectorAll('.c-tab').forEach(t => {
+      t.classList.toggle('active', t.getAttribute('data-name') === name);
+    });
+
+    // 更新单人模式考生信息面板
+    const grid = document.getElementById('singleInfoGrid');
+    if (grid) {
+      grid.innerHTML = `
+        <div class="info-item"><span class="label">姓名：</span><span class="value">${name}</span></div>
+        <div class="info-item"><span class="label">性别：</span><span class="value" style="color:${data.gender==='男'?'#409EFF':'#f56c6c'};">${data.gender}</span></div>
+        <div class="info-item"><span class="label">编号：</span><span class="value">${data.no}</span></div>
+        <div class="info-item"><span class="label">所属组：</span><span class="value">现场日程0422</span></div>
+        <div class="info-item"><span class="label">面试状态：</span><span class="value" style="color:${data.status_color};">${data.status}</span></div>
+        <div class="info-item"><span class="label">准考证号：</span><span class="value">2026010${data.no}</span></div>
+        <div class="info-item"><span class="label">身份证号：</span><span class="value">${data.id}</span></div>
+        <div class="info-item"><span class="label">联系电话：</span><span class="value">${data.phone}</span></div>
+        <div class="info-item"><span class="label">报考岗位：</span><span class="value">专题讲解岗</span></div>
+        <div class="info-item"><span class="label">毕业院校：</span><span class="value">${data.school}</span></div>
+      `;
+    }
+
+    // 更新单人模式 Zoom 主视频下的考生名牌
+    const tag = document.getElementById('singleZoomNameTag');
+    if (tag) tag.textContent = name + ' · 考生';
+  }
+
+  // 绑定顶部考生 tab 点击
+  document.querySelectorAll('#singleCandidateTabs .c-tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      openSingleCandidate(tab.getAttribute('data-name'));
+    });
+  });
+
+  function openCandidatePanel(name) {
+    const data = candidateData[name];
+    if (!data) return;
+
+    // 标记选中 + 高亮对应行
+    document.body.classList.add('candidate-selected');
+    document.querySelectorAll('.cl-table tbody tr').forEach(tr => tr.classList.remove('current-row'));
+    document.querySelectorAll('.cl-table .name-cell').forEach(nc => {
+      if (nc.textContent.trim() === name) {
+        nc.closest('tr').classList.add('current-row');
+      }
+    });
+
+    // 更新左上黑条的考生名
+    document.getElementById('clCurrentName').textContent = name;
+
+    // 同步更新会议窗口中的考生名牌
+    const zoomNameTag = document.getElementById('clZoomNameTag');
+    if (zoomNameTag) zoomNameTag.textContent = name + ' · 考生';
+
+    // 更新「考生信息」面板内容
+    const infoPanel = document.querySelector('.cl-tab-panel[data-cpanel="info"] .info-grid');
+    if (infoPanel) {
+      infoPanel.innerHTML = `
+        <div class="info-item"><span class="label">姓名：</span><span class="value">${name}</span></div>
+        <div class="info-item"><span class="label">性别：</span><span class="value" style="color:${data.gender==='男'?'#409EFF':'#f56c6c'};">${data.gender}</span></div>
+        <div class="info-item"><span class="label">编号：</span><span class="value">${data.no}</span></div>
+        <div class="info-item"><span class="label">所属组：</span><span class="value">现场日程0422</span></div>
+        <div class="info-item"><span class="label">面试状态：</span><span class="value" style="color:${data.status_color};">${data.status}</span></div>
+        <div class="info-item"><span class="label">准考证号：</span><span class="value">2026010${data.no}</span></div>
+        <div class="info-item"><span class="label">身份证号：</span><span class="value">${data.id}</span></div>
+        <div class="info-item"><span class="label">联系电话：</span><span class="value">${data.phone}</span></div>
+        <div class="info-item"><span class="label">报考岗位：</span><span class="value">专题讲解岗</span></div>
+        <div class="info-item"><span class="label">毕业院校：</span><span class="value">${data.school}</span></div>
+      `;
+    }
+
+    // 默认切回「考生信息」tab
+    clTabs.forEach(x => x.classList.remove('active'));
+    clPanels.forEach(x => x.classList.remove('active'));
+    document.querySelector('.cl-tab-item[data-ctab="info"]').classList.add('active');
+    document.querySelector('.cl-tab-panel[data-cpanel="info"]').classList.add('active');
+  }
+
+  // 绑定姓名点击
+  document.querySelectorAll('.cl-table .name-cell').forEach(cell => {
+    cell.addEventListener('click', () => {
+      openCandidatePanel(cell.textContent.trim());
+    });
+  });
+
+  // ================== 集体评分模式下的"进入会议 / 结束会议"按钮 ==================
+  const clEnterBtn = document.getElementById('clEnterMeetingBtn');
+  if (clEnterBtn) {
+    clEnterBtn.addEventListener('click', () => {
+      if (document.body.classList.contains('in-meeting')) {
+        // 会议中 → 点击变成"结束会议"
+        leaveMeeting(false);
+      } else {
+        // 群面模式：进入会议不需要先选考生，两者解耦
+        enterMeeting();
+      }
+    });
+  }
+
+  if (leaveBtn)   leaveBtn.addEventListener('click', () => leaveMeeting(false));
+  if (clLeaveBtn) clLeaveBtn.addEventListener('click', () => leaveMeeting(false));
+
+  // ================== 集体模式左上黑条 ✕ 按钮：关闭 Tab 面板 ==================
+  const clCloseBtn = document.getElementById('clCloseBtn');
+  if (clCloseBtn) {
+    clCloseBtn.addEventListener('click', () => {
+      // 如果在会议中，先退出会议
+      if (document.body.classList.contains('in-meeting')) {
+        leaveMeeting(false);
+      }
+      // 关闭 Tab 面板、取消行高亮
+      document.body.classList.remove('candidate-selected');
+      document.querySelectorAll('.cl-table tbody tr').forEach(tr => tr.classList.remove('current-row'));
+    });
+  }
+</script>
+
+</body>
+</html>
