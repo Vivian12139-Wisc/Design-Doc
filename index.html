@@ -1,6 +1,90 @@
-<h1>My Prototypes</h1>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>My Prototype Hub</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<ul>
-  <li><a href="./DAR/">Project A</a></li>
-  <li><a href="./Ezinterview/">Project B</a></li>
-</ul>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      background: #f6f7fb;
+      color: #333;
+    }
+
+    header {
+      background: #111827;
+      color: white;
+      padding: 40px;
+      text-align: center;
+    }
+
+    .container {
+      max-width: 1000px;
+      margin: 40px auto;
+      padding: 0 20px;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 20px;
+    }
+
+    .card {
+      background: white;
+      border-radius: 12px;
+      padding: 20px;
+      text-decoration: none;
+      color: inherit;
+      box-shadow: 0 6px 20px rgba(0,0,0,0.08);
+      transition: 0.2s;
+    }
+
+    .card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 10px 30px rgba(0,0,0,0.12);
+    }
+
+    .title {
+      font-size: 18px;
+      font-weight: bold;
+      margin-bottom: 8px;
+    }
+
+    .desc {
+      font-size: 14px;
+      color: #666;
+    }
+  </style>
+</head>
+
+<body>
+
+<header>
+  <h1>Xunwei's Prototype Hub</h1>
+  <p>All HTML prototypes in one place</p>
+</header>
+
+<div class="container">
+
+  <div class="grid">
+
+    <a class="card" href="./DAR/">
+      <div class="title">DAR</div>
+      <div class="desc"></div>
+    </a>
+
+    <a class="card" href="./Ezinterview/">
+      <div class="title">易面</div>
+      <div class="desc"></div>
+    </a>
+
+
+  </div>
+
+</div>
+
+</body>
+</html>
